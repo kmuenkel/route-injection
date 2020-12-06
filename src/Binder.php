@@ -57,7 +57,10 @@ abstract class Binder
             }
 
             $route->setParameter($name, $concrete);
-            unset(static::$deferred[static::class]);
+
+            if (($deferred = array_search(static::class, self::$deferred)) !== false) {
+                unset(self::$deferred[$deferred]);
+            }
 
             return true;
         }
@@ -73,7 +76,7 @@ abstract class Binder
      */
     protected function deferMiddleware(Request $request)
     {
-        if (in_array(static::class, static::$deferred)) {
+        if (in_array(static::class, self::$deferred)) {
             throw new RuntimeException('Class '.static::class.' has already been deferred.');
         }
 
@@ -82,7 +85,7 @@ abstract class Binder
         $routes = $router->getRoutes();
         $route = $routes->match($request);
         $route->middleware(static::class);
-        static::$deferred[static::class];
+        self::$deferred[] = static::class;
     }
 
     /**
