@@ -38,7 +38,7 @@ class RouteInjectionServiceProvider extends ServiceProvider
         array_map(function (string $binder) use ($kernel) {
             if (!is_subclass_of($binder, Binder::class)) {
                 throw new InvalidArgumentException('Config must be a class name inheriting from '.Binder::class.'. "'
-                    .get_class($binder).'" given.');
+                    .$binder.'" given.');
             }
 
             $kernel->pushMiddleware($binder);
