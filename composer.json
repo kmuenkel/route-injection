@@ -1,0 +1,50 @@
+{
+    "name": "kmuenkel/route-injection",
+    "description": "Allow for Laravel Controller method injection of *any* object type.",
+    "time": "2020-12-06 02:00:00",
+    "authors": [
+        {
+            "name": "Kevin Muenkel",
+            "email": "kevin_tm@yahoo.com"
+        }
+    ],
+    "keywords": [
+        "Laravel",
+        "Route",
+        "Injection"
+    ],
+    "license": "MIT",
+    "type": "library",
+    "require": {
+        "illuminate/routing": "^7.0|^8.0",
+        "illuminate/http": "^7.0|^8.0",
+        "illuminate/support": "^7.0|^8.0"
+    },
+    "require-dev": {
+        "fzaninotto/faker": "^1.9",
+        "phpunit/phpunit": "^9.4",
+        "mockery/mockery": "^1.4",
+        "barryvdh/laravel-ide-helper": "^2.8",
+        "orchestra/testbench": "^5.7",
+        "friendsofphp/php-cs-fixer": "^2.16",
+        "squizlabs/php_codesniffer": "^3.5",
+        "phpmd/phpmd": "^2.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "RouteInjection\\": "src/"
+        }
+    },
+    "config": {
+        "preferred-install": "dist"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "RouteInjection\\Providers\\RouteInjectionServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
