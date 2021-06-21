@@ -4,10 +4,13 @@ namespace RouteInjection;
 
 use Closure;
 use RuntimeException;
-use UnexpectedValueException;
-use Illuminate\Routing\Router;
+use ReflectionMethod;
+use ReflectionFunction;
+use ReflectionParameter;
+use Illuminate\Routing\{Route, Router};
 use Illuminate\Http\{Request, Response};
 use Illuminate\Support\Facades\Validator;
+use Lti\Models\Repositories\Contracts\ResourceLinkRepository;
 
 /**
  * Class RouteInjectionBinding
@@ -26,6 +29,11 @@ abstract class Binder
     protected $rules = [];
 
     /**
+     * @var string
+     */
+    protected $abstractionName = '';
+
+    /**
      * @param Request $request
      * @param Closure $next
      * @return Response
@@ -33,7 +41,13 @@ abstract class Binder
     public function handle(Request $request, Closure $next)
     {
         if ($this->rules($request)) {
-            if (!$this->setParameter($request)) {
+            if ($route = $request->route()) {
+                $this->setParameter($route);
+
+                if (($deferred = array_search(static::class, self::$deferred)) !== false) {
+                    unset(self::$deferred[$deferred]);
+                }
+            } else {
                 $this->deferMiddleware($request);
             }
         }
@@ -42,30 +56,38 @@ abstract class Binder
     }
 
     /**
-     * @param Request $request
-     * @return bool
+     * @param Route $route
+     * @return ReflectionParameter[]
      */
-    protected function setParameter(Request $request): bool
+    public static function getRouteParams(Route $route = null): array
     {
-        if ($route = $request->route()) {
-            $concrete = $this->concreteObject($request);
-            $name = $this->abstractionName($concrete);
+        $route = $route ?: request()->route();
+        $action = $route->getAction('uses');
+        $controller = is_callable($action) ? $action : $route->getController();
+        $method = $route->getActionMethod();
+        $reflector = $controller instanceof Closure ? app(ReflectionFunction::class, ['name' => $controller])
+            : app(ReflectionMethod::class, ['class_or_method' => $controller, 'name' => $method]);
 
-            if (!($concrete instanceof $name)) {
-                throw new UnexpectedValueException('The abstraction for '.get_class($this).' must be the name of the "'
-                    .get_class($concrete).'" object, its parent, or an interface it implements. "'.$name.'" given.');
+        return $reflector->getParameters();
+    }
+
+    /**
+     * @param Route $route
+     */
+    protected function setParameter(Route $route)
+    {
+        $parameters = static::getRouteParams($route);
+        $abstraction = $this->abstractionName();
+
+        collect($parameters)->each(function (ReflectionParameter $parameter) use ($route, $abstraction) {
+            $parameterType = optional($parameter->getType())->getName();
+            $parameterValue = $route->parameter($parameter->name);
+
+            if ($parameterType && is_a($parameterType, $abstraction, true)) {
+                $concrete = $this->concreteObject($parameterValue);
+                $route->setParameter($parameter->name, $concrete);
             }
-
-            $route->setParameter($name, $concrete);
-
-            if (($deferred = array_search(static::class, self::$deferred)) !== false) {
-                unset(self::$deferred[$deferred]);
-            }
-
-            return true;
-        }
-
-        return false;
+        });
     }
 
     /**
@@ -98,17 +120,16 @@ abstract class Binder
     }
 
     /**
-     * @param object $concrete
      * @return string
      */
-    protected function abstractionName(object $concrete): string
+    protected function abstractionName(): string
     {
-        return get_class($concrete);
+        return $this->abstractionName;
     }
 
     /**
-     * @param Request $request
+     * @param mixed $parameter
      * @return object
      */
-    abstract protected function concreteObject(Request $request): object;
+    abstract protected function concreteObject($parameter): object;
 }
