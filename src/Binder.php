@@ -86,7 +86,6 @@ abstract class Binder
             $parameterValue = $route->parameter($parameterName);
 
             if ($parameterType && is_a($parameterType, $abstraction, true)) {
-                is_null($parameterValue) && dd($parameterName, $route->parameters());
                 $concrete = $this->concreteObject($parameterValue);
                 $route->setParameter($parameterName, $concrete);
             }
