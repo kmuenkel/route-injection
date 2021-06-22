@@ -7,6 +7,7 @@ use RuntimeException;
 use ReflectionMethod;
 use ReflectionFunction;
 use ReflectionParameter;
+use Illuminate\Support\Str;
 use Illuminate\Routing\{Route, Router};
 use Illuminate\Http\{Request, Response};
 use Illuminate\Support\Facades\Validator;
@@ -81,13 +82,30 @@ abstract class Binder
 
         collect($parameters)->each(function (ReflectionParameter $parameter) use ($route, $abstraction) {
             $parameterType = optional($parameter->getType())->getName();
-            $parameterValue = $route->parameter($parameter->name);
+            $parameterName = $this->getRouteParameterName($route, $parameter);
+            $parameterValue = $route->parameter($parameterName);
 
             if ($parameterType && is_a($parameterType, $abstraction, true)) {
+                is_null($parameterValue) && dd($parameterName, $route->parameters());
                 $concrete = $this->concreteObject($parameterValue);
-                $route->setParameter($parameter->name, $concrete);
+                $route->setParameter($parameterName, $concrete);
             }
         });
+    }
+
+    /**
+     * @param Route $route
+     * @param ReflectionParameter $parameter
+     * @return string
+     */
+    protected function getRouteParameterName(Route $route, ReflectionParameter $parameter): string
+    {
+        $parameterExists = $route->hasParameter($parameter->name);
+        $singulareName = Str::singular($parameter->name);
+        $parameterIsPlural = $parameter->name != $singulareName;
+        $singularExists = $parameterIsPlural && $route->hasParameter($singulareName);
+
+        return !$parameterExists && $singularExists ? $singulareName : $parameter->name;
     }
 
     /**
