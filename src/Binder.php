@@ -20,41 +20,9 @@ use Lti\Models\Repositories\Contracts\ResourceLinkRepository;
 abstract class Binder
 {
     /**
-     * @var string[]
-     */
-    private static $deferred = [];
-
-    /**
-     * @var string
-     */
-    protected $rules = [];
-
-    /**
      * @var string
      */
     protected $abstractionName = '';
-
-    /**
-     * @param Request $request
-     * @param Closure $next
-     * @return Response
-     */
-    public function handle(Request $request, Closure $next)
-    {
-        if ($this->rules($request)) {
-            if ($route = $request->route()) {
-                $this->setParameter($route);
-
-                if (($deferred = array_search(static::class, self::$deferred)) !== false) {
-                    unset(self::$deferred[$deferred]);
-                }
-            } else {
-                $this->deferMiddleware($request);
-            }
-        }
-
-        return $next($request);
-    }
 
     /**
      * @param Route $route
@@ -75,7 +43,7 @@ abstract class Binder
     /**
      * @param Route $route
      */
-    protected function setParameter(Route $route)
+    public function setParameter(Route $route)
     {
         $parameters = static::getRouteParams($route);
         $abstraction = $this->abstractionName();
@@ -100,40 +68,11 @@ abstract class Binder
     protected function getRouteParameterName(Route $route, ReflectionParameter $parameter): string
     {
         $parameterExists = $route->hasParameter($parameter->name);
-        $singulareName = Str::singular($parameter->name);
-        $parameterIsPlural = $parameter->name != $singulareName;
-        $singularExists = $parameterIsPlural && $route->hasParameter($singulareName);
+        $singularName = Str::singular($parameter->name);
+        $parameterIsPlural = $parameter->name != $singularName;
+        $singularExists = $parameterIsPlural && $route->hasParameter($singularName);
 
-        return !$parameterExists && $singularExists ? $singulareName : $parameter->name;
-    }
-
-    /**
-     * If this is being called as a global middleware, the route wont have been set yet.
-     * In that case, identify what it would be, and apply this to it, so that it can fire later.
-     * The parameters cannot simply be set now, because they would be overridden by Route::bind() later.
-     * @param Request $request
-     */
-    protected function deferMiddleware(Request $request)
-    {
-        if (in_array(static::class, self::$deferred)) {
-            throw new RuntimeException('Class '.static::class.' has already been deferred.');
-        }
-
-        /** @var Router $router singleton */
-        $router = app('router');
-        $routes = $router->getRoutes();
-        $route = $routes->match($request);
-        $route->middleware(static::class);
-        self::$deferred[] = static::class;
-    }
-
-    /**
-     * @param Request $request
-     * @return bool
-     */
-    protected function rules(Request $request): bool
-    {
-        return !Validator::make($request->all(), $this->rules)->fails();
+        return !$parameterExists && $singularExists ? $singularName : $parameter->name;
     }
 
     /**

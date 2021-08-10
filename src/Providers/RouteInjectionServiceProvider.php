@@ -2,11 +2,11 @@
 
 namespace RouteInjection\Providers;
 
-use RouteInjection\Binder;
-use InvalidArgumentException;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\ServiceProvider;
+use RouteInjection\Middleware\SubstituteBindings;
 use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Routing\Middleware\SubstituteBindings as BaseSubstituteBindings;
 
 /**
  * Class RouteInjectionServiceProvider
@@ -14,8 +14,6 @@ use Illuminate\Contracts\Container\BindingResolutionException;
  */
 class RouteInjectionServiceProvider extends ServiceProvider
 {
-    const CONFIG_NAME = 'route-injection';
-
     /**
      * @void
      */
@@ -23,8 +21,8 @@ class RouteInjectionServiceProvider extends ServiceProvider
     {
         $configPath = realpath(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..'
             . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'route-injection.php');
-        $this->publishes([$configPath => config_path(self::CONFIG_NAME.'.php')]);
-        $this->mergeConfigFrom($configPath, self::CONFIG_NAME);
+        $this->publishes([$configPath => config_path('route-injection.php')]);
+        $this->mergeConfigFrom($configPath, 'route-injection');
     }
 
     /**
@@ -33,15 +31,6 @@ class RouteInjectionServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $kernel = $this->app->make(Kernel::class);
-
-        array_map(function (string $binder) use ($kernel) {
-            if (!is_subclass_of($binder, Binder::class)) {
-                throw new InvalidArgumentException('Config must be a class name inheriting from '.Binder::class.'. "'
-                    .$binder.'" given.');
-            }
-
-            $kernel->pushMiddleware($binder);
-        }, config(self::CONFIG_NAME.'.binders', []));
+        $this->app->bind(BaseSubstituteBindings::class, SubstituteBindings::class);
     }
 }
