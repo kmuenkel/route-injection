@@ -34,11 +34,10 @@ abstract class Binder
         $action = $route->getAction('uses');
         $controller = is_callable($action) ? $action : $route->getController();
         $method = $route->getActionMethod();
+        $method = is_callable($controller) && $method == get_class($controller) ? '__invoke' : $method;
 
         $reflector = $controller instanceof Closure ? app(ReflectionFunction::class, ['name' => $controller])
-            : (is_callable($controller)
-                ? app(ReflectionMethod::class, ['class_or_method' => $controller, 'name' => '__invoke'])
-                : app(ReflectionMethod::class, ['class_or_method' => $controller, 'name' => $method]));
+            : app(ReflectionMethod::class, ['class_or_method' => $controller, 'name' => $method]);
 
         return $reflector->getParameters();
     }
